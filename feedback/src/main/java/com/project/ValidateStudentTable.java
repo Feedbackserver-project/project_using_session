@@ -26,91 +26,146 @@ public class ValidateStudentTable extends HttpServlet {
     PreparedStatement pstmt = null;
     ResultSet rs = null;
 
-    static String url = "jdbc:mysql://localhost:3306/feedbackproject";
+    static String url = "jdbc:mysql://localhost:3306/feedback";
     static String dbUsername = "root";
-    static String dbPassword = "gopika@123";
+    static String dbPassword = "Gopi@2004";
 
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        PrintWriter pw = response.getWriter();
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+    	HttpSession session = request.getSession();
+    	String rollno = (String) session.getAttribute("rollno");
+    	session.setAttribute("rollno", rollno);
+        String cycle = (String) session.getAttribute("cycle");
+        session.setAttribute("cycle", cycle);
+        String academicYear = (String) session.getAttribute("academicyear");
+        session.setAttribute("academicyear", academicYear);
+        String facultyst = "SELECT fid, sub, fname FROM faculty WHERE fid=?";
+        int fCounter=0;
+        
+        if (request.getParameter("fCounter") != null) {
+        	String fCounterParam = request.getParameter("fCounter");
+            fCounter = Integer.parseInt(fCounterParam);    
+        }
+        // Increment subjectCounter by 1 to start from the next subject
+        fCounter++;
+        Connection con = null;
         try {
-            con = DriverManager.getConnection(url, dbUsername, dbPassword);
+        	int totalSubjects = 7; // Assuming you have 5 subjects
+            boolean isLastSubject = (fCounter == totalSubjects);
 
-            // Student information from request parameters
-            String id = request.getParameter("registerNo");
-            String acc = request.getParameter("acc_year");
-            String year = request.getParameter("year");
-            String branch = request.getParameter("branch");
-            String sem = request.getParameter("semester");
-            String cycle = request.getParameter("cycle");
-            String sec = request.getParameter("section");
-            String ss=year+"_"+sem+"_"+branch+"_"+sec;
-            String stname = "s" + year + sem + id;
-
-            // Check for existing student table
-            java.sql.DatabaseMetaData metadata = con.getMetaData();
-            rs = metadata.getTables(null, null, stname, null);
-            if (rs.next()) {
-                request.getRequestDispatcher("completed.html").forward(request, response);
-                return; // Exit if table already exists
+            if (isLastSubject) {
+                // Redirect to a new page indicating successful completion
+                response.sendRedirect("last.html");
             }
+                else{
+            con = DBConnect.connect();
 
-            // Create a session or retrieve the existing one
-            HttpSession session = request.getSession(true);
-
-            // Query to retrieve faculty information based on section and academic year
-            String facultyQuery = "SELECT fid, sub, fname FROM faculty WHERE sec = ? AND acc_year = ?";
-            PreparedStatement facultyStmt = con.prepareStatement(facultyQuery);
-            facultyStmt.setString(1, ss);
-            facultyStmt.setString(2, acc);
+            PreparedStatement facultyStmt = con.prepareStatement(facultyst);
+            
+            String[]fids=(String[])session.getAttribute("fids");
+            facultyStmt.setString(1, fids[fCounter-1]);
             ResultSet facultyResult = facultyStmt.executeQuery();
+            if (facultyResult.next()) {
+            	
+            	String[] facultyinfo = new String[3];
+            	facultyinfo[0] = facultyResult.getString("fid");
+                facultyinfo[1] = facultyResult.getString("sub");
+                facultyinfo[2] = facultyResult.getString("fname");
+                session.setAttribute("facultyinfo", facultyinfo);
+                request.setAttribute("fCounter", fCounter);
 
-            List<FacultyInfo> facultyInfoList = new ArrayList<>(); // List to store faculty information
-            while (facultyResult.next()) {
-                int fid = facultyResult.getInt("fid");
-                String sub = facultyResult.getString("sub");
-                String fname = facultyResult.getString("fname");
-                facultyInfoList.add(new FacultyInfo(fid, sub, fname)); // Add faculty info to list
+                request.getRequestDispatcher("question.jsp").forward(request, response);
             }
-
-            // Create student table if not exists
-            String createStudentTableSQL = "CREATE TABLE IF NOT EXISTS " + stname + " (" +
-                    "`fid` INT ," +
-                    "`sub` TEXT," +
-                    "`sec` TEXT," +
-                    "`fname` TEXT" +
-
-                    ") ENGINE=InnoDB DEFAULT CHARSET=latin1;";
-            java.sql.Statement createStudentTableStmt = con.createStatement();
-            createStudentTableStmt.executeUpdate(createStudentTableSQL);
-
-            // Insert |faculty information into student table
-            for (FacultyInfo faculty : facultyInfoList) {
-                String query = "INSERT INTO " + stname + " VALUES(?, ?, ?, ?)";
-                PreparedStatement inserting = con.prepareStatement(query);
-                inserting.setInt(1, faculty.getFid());
-                inserting.setString(2, faculty.getSub());
-                inserting.setString(3, ss);
-                inserting.setString(4, faculty.getFname());
-                inserting.executeUpdate();
+                }
+            
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle database errors
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace(); // Handle class not found exception
+        } finally {
+            // Close the database connection
+            if (con != null) {
+                try {
+                    con.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
             }
-
-            // Store information in the session
-            session.setAttribute("facultyInfoList", facultyInfoList);
-            session.setAttribute("cycle", cycle);
-            System.out.println(cycle);
-            session.setAttribute("acc_year", acc);
-            System.out.println(acc);
-            session.setAttribute("sec", sec);
-            System.out.println(sec);
-            session.setAttribute("id", id);
-            System.out.println(id);
-            session.setAttribute("currentIndex", 0); // Initial faculty index for iteration
-
-            // Forward request to question.jsp
-            RequestDispatcher dd = request.getRequestDispatcher("question.jsp");
-            dd.forward(request, response);	 
-}catch(Exception e) {
-	e.printStackTrace();
-}
+        }
     }
+    
+    
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        String rollno = request.getParameter("rnumber");
+        session.setAttribute("rollno", rollno);
+        String cycle = request.getParameter("cycle");
+        session.setAttribute("cycle", cycle);
+        String academicYear = request.getParameter("academicyear");
+        session.setAttribute("academicyear", academicYear);
+        String sec = request.getParameter("section");
+        String year = request.getParameter("year");
+        String sem = request.getParameter("sem");
+        String branch = request.getParameter("branch");
+        String ss = year + "_" + sem + "_" + branch + "_" + sec;
+        String facultyQuery = "SELECT fid FROM faculty WHERE sec = ? AND acc_year = ?";
+        String facultyst = "SELECT fid, sub, fname FROM faculty WHERE fid=?";
+        int fCounter = 0; // Initialize to 0 to access the first subject
+        
+        // Check if subjectCounter is provided in the request
+        if (request.getParameter("fCounter") != null) {
+            fCounter = Integer.parseInt(request.getParameter("fCounter"));
+        }
+        // Increment subjectCounter by 1 to start from the next subject
+        fCounter++;
+
+        Connection con = null;
+        try {
+            con = DBConnect.connect();
+            PreparedStatement facultyQur = con.prepareStatement(facultyQuery);
+            facultyQur.setString(1, ss);
+            facultyQur.setString(2, academicYear);
+            ResultSet facultyRes = facultyQur.executeQuery();
+            PreparedStatement facultyStmt = con.prepareStatement(facultyst);
+            String[] fids = new String[6];
+            int index = 0; 
+             while (facultyRes.next() && index < 6) {
+                 String fid = facultyRes.getString("fid");
+                 fids[index] = fid;
+                 index++;
+            }
+            
+            facultyStmt.setString(1, fids[fCounter-1]);
+            ResultSet facultyResult = facultyStmt.executeQuery();
+            session.setAttribute("fids", fids);
+            if (facultyResult.next()) {
+            	
+            	String[] facultyinfo = new String[3];
+            	facultyinfo[0] = facultyResult.getString("fid");
+                facultyinfo[1] = facultyResult.getString("sub");
+                facultyinfo[2] = facultyResult.getString("fname");
+                session.setAttribute("facultyinfo", facultyinfo);
+                session.setAttribute("fCounter", fCounter);
+                
+                
+                request.getRequestDispatcher("question.jsp").forward(request, response);
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace(); // Handle database errors
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace(); // Handle class not found exception
+        } finally {
+            // Close the database connection
+            if (con != null) {
+                try {
+                    con.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
 }
