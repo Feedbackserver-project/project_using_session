@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="ISO-8859-1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
 <title>Login Page</title>
@@ -101,7 +102,7 @@ float: left;
 <br/>
 <br/>
 <br/>
- <form id="loginForm" action='./ValidateStudentTable' onsubmit="return validateForm()">
+ <form id="loginForm" method="post" action='./ValidateStudentTable' onsubmit="return validateForm()">
     <div class="login-box">
         <img src="vvitlogo.png" alt="Logo">
         <h2>Student Login</h2>
@@ -157,7 +158,7 @@ float: left;
                 <td><label>Cycle:</label></td>
                 <td><select id="cycle" name="cycle">
                     <option value="">Select</option>
-                    <option value="cycle1">1</option>
+                    <option value="cycle1">1</option>c
                     <option value="cycle2">2</option>
                 </select></td></tr>
                 <tr>
